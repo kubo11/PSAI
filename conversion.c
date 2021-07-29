@@ -123,9 +123,16 @@ const char* code_to_msg(int code) {
     }
 }
 
-int hex(char c){
+int hex(char c) {
     if (c <= '9')
         return (int)(c - 48);
     else
         return (int)(c - 55);
+}
+
+int dec(int n) {
+    if (n <= 9)
+        return (char)(n + 48);
+    else 
+        return (char)(n + 55);
 }
