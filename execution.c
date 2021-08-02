@@ -46,6 +46,10 @@ int step(memory_array **tab_m, instruction_array **tab_i, reg (*registers)[], ch
         }else if ((*tab_i)->tab[(*i)].command[1] == 'A'){
             return load(&(*registers)[(*tab_i)->tab[(*i)].arg1].value, &(*registers)[(*tab_i)->tab[(*i)].arg1].type, ((*registers)[(*tab_i)->tab[(*i)].arg2].value + (*tab_i)->tab[(*i)].offset), (*registers)[(*tab_i)->tab[(*i)].arg2].type, PSR, (int)&((*tab_i)->tab[(*i)]), i);
         }else{
+            int a = (*tab_i)->tab[(*i)].arg2;
+            int b = (*tab_i)->tab[(*i)].offset;
+            int c = (*registers)[(*tab_i)->tab[(*i)].arg2].value;
+            int y = (*tab_m)->tab[((*registers)[(*tab_i)->tab[(*i)].arg2].value + (*tab_i)->tab[(*i)].offset) / 4].value;
             return load(&(*registers)[(*tab_i)->tab[(*i)].arg1].value, &(*registers)[(*tab_i)->tab[(*i)].arg1].type, (*tab_m)->tab[((*registers)[(*tab_i)->tab[(*i)].arg2].value + (*tab_i)->tab[(*i)].offset) / 4].value, 'v', PSR, (int)&((*tab_i)->tab[(*i)]), i);
         }
     }
@@ -184,7 +188,7 @@ int divide(int* x, int y, char(*PSR)[], int PSR_address, int* i) {
 }
 
 int jump(char jump_type, int sign, char value_type, int address, int *i, int size, instruction_node tab[], char(*PSR)[], int PSR_address) {
-    if (check_jump_conditions(jump_type, sign)) {
+     if (check_jump_conditions(jump_type, sign)) {
         if (value_type == 'i') {
             (*i) = bin_search(address / 4, min(address / 2, size), tab, address);
             if ((*i) < 0) {

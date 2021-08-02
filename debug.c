@@ -9,24 +9,34 @@
 #define WINDOW_X 2
 #define WINDOW_Y HEADER_Y + 2
 #define GAP 2
-#define INSTRUCTION_X_PSA WINDOW_X
-#define INSTRUCTION_X_MCSK WINDOW_X
-#define INSTRUCTION_WIDTH_PSA 52
-#define INSTRUCTION_WIDTH_MCSK 14
-#define REGISTER_X_PSA INSTRUCTION_X_PSA + INSTRUCTION_WIDTH_PSA + GAP
-#define REGISTER_X_MCSK INSTRUCTION_X_MCSK + INSTRUCTION_WIDTH_MCSK + GAP
-#define REGISTER_WIDTH 17
+#define INSTRUCTION_X WINDOW_X
+#define INSTRUCTION_WIDTH 52
+#define REGISTER_X INSTRUCTION_X + INSTRUCTION_WIDTH + GAP
+#define REGISTER_WIDTH 15
 #define REGISTER_LENGTH 16
-#define MEMORY_X_PSA REGISTER_X_PSA + REGISTER_WIDTH + GAP
-#define MEMORY_X_MCSK REGISTER_X_MCSK + REGISTER_WIDTH + GAP
-#define MEMORY_WIDTH 24
-#define PSR_X_PSA MEMORY_X_PSA + MEMORY_WIDTH + GAP
-#define PSR_X_MCSK MEMORY_X_MCSK + MEMORY_WIDTH + GAP
-#define PSR_WIDTH 25
+#define MEMORY_X REGISTER_X + REGISTER_WIDTH + GAP
+#define MEMORY_WIDTH 28
+#define PSR_X MEMORY_X + MEMORY_WIDTH + GAP
+#define PSR_WIDTH 23
 #define PSR_LENGTH 1
+#define LABEL_WIDTH 16
+#define SIGN_Y 6
+#define SIGN_X 123
+#define SIGN_WIDTH 3
+#define SIGN_LENGTH 3
+#define CONTROLLS_HEADER_Y SIGN_Y + SIGN_LENGTH + 1
+#define CONTROLLS_Y CONTROLLS_HEADER_Y + 2
+#define CONTROLLS_X PSR_X
+#define CONTROLLS_WIDTH PSR_WIDTH
+#define CONTROLLS_LENGTH 6
+#define KEY_SPACE 32
+#define KEY_ESCAPE 27
 
-void debug(memory_array *tab_m, instruction_array *tab_i, reg *registers, char mode) {
+void debug(memory_array *tab_m, instruction_array *tab_i, reg registers[], char mode) {
 	WINDOW** windows = NULL, ** current_window = NULL;
+	char PSR[64];
+	const char* headers[] = { "INSTRUCTIONS", "REGISTERS", "MEMORY", "PSR", "LAST OPERATION SIGN"};
+	int i = 0, instruction_offset = 0, memory_offset = 0, code = 0, key, exit = '0', last = 0;
 
 	initscr();
 	noecho();
@@ -34,90 +44,138 @@ void debug(memory_array *tab_m, instruction_array *tab_i, reg *registers, char m
 	curs_set(0);
 	resize_term(30, 128);
 
-	if (mode == '0')
-		windows = initPSA(tab_m, tab_i);
-	else
-		windows = initMCSK();
+	for (int i = 0; i < 64; i++) PSR[i] = '0';
+	windows = initWindow(tab_m, tab_i, registers, &PSR, headers, tab_m->size);
+	hilighting_on(windows, tab_m, tab_i, registers, PSR, i, instruction_offset, memory_offset);
+	initControlls();
 	current_window = windows[0];
 
-	getch();
+	while (exit == '0' && (key = getch()) != KEY_ESCAPE) {
+		switch (key) {
+		case KEY_LEFT:
+			if (tab_i->size > REGISTER_LENGTH) {
+				current_window = windows[0];
+				highlight_header(strlen(headers[0]), strlen(headers[2]), 'i');
+			}
+			break;
+		case KEY_RIGHT:
+			if (tab_i->size > REGISTER_LENGTH) {
+				current_window = windows[2];
+				highlight_header(strlen(headers[0]), strlen(headers[2]), 'm');
+			}
+			break;
+		case KEY_UP:
+			if (tab_i->size > REGISTER_LENGTH) {
+				if (current_window == windows[0] && instruction_offset > 0)
+					prefresh(current_window, --instruction_offset, 0, WINDOW_Y, INSTRUCTION_X, WINDOW_Y + min(tab_i->size, REGISTER_LENGTH) - 1, INSTRUCTION_X + INSTRUCTION_WIDTH - 1);
+				if (current_window == windows[2] && memory_offset > 0)
+					prefresh(current_window, --memory_offset, 0, WINDOW_Y, MEMORY_X, WINDOW_Y + min(tab_m->size, REGISTER_LENGTH) - 1, MEMORY_X + MEMORY_WIDTH - 1);
+			}
+			break;
+		case KEY_DOWN:
+			if (tab_i->size > REGISTER_LENGTH) {
+				if (current_window == windows[0] && instruction_offset + min(tab_i->size, REGISTER_LENGTH) < tab_i->size)
+					prefresh(current_window, ++instruction_offset, 0, WINDOW_Y, INSTRUCTION_X, WINDOW_Y + min(tab_i->size, REGISTER_LENGTH) - 1, INSTRUCTION_X + INSTRUCTION_WIDTH - 1);
+				if (current_window == windows[2] && memory_offset + min(tab_m->size, REGISTER_LENGTH) < tab_m->size)
+					prefresh(current_window, ++memory_offset, 0, WINDOW_Y, MEMORY_X, WINDOW_Y + min(tab_m->size, REGISTER_LENGTH) - 1, MEMORY_X + MEMORY_WIDTH - 1);
+			}
+			break;
+		case KEY_SPACE:
+			last = i;
+			if (i < tab_i->size - 1)
+				if (!(code = step(&tab_m, &tab_i, registers, &PSR, &i))) {
+					update(windows, tab_i, tab_m, registers, PSR, last, instruction_offset, memory_offset);
+					hilighting_on(windows, tab_m, tab_i, registers, PSR, i, instruction_offset, memory_offset);
+				}
+				else exit = '1';
+			else exit = '1';
+			break;
+		default:
+			break;
+		}
+	}
+
+	if (exit == '1') getch();
 	endwin();
 }
 
 
-WINDOW** initPSA(memory_array *tab_m, instruction_array *tab_i) {
-	WINDOW** windows = (WINDOW**)malloc(4 * sizeof(WINDOW*));
-	int instruction_length = tab_i->size, memory_length = tab_m->size;
-	const char* headers[] = { "INSTRUCTIONS", "REGISTERS", "MEMORY", "PSR" };
+WINDOW** initWindow(memory_array *tab_m, instruction_array *tab_i, reg registers[], char(*PSR)[], const char* headers[], int memory_length) {
+	WINDOW** windows = (WINDOW**)malloc(5 * sizeof(WINDOW*));
 	char a[17], b[5];
 
-	windows[0] = newpad(instruction_length, INSTRUCTION_WIDTH_PSA);
-	windows[1] = newwin(REGISTER_LENGTH, REGISTER_WIDTH, WINDOW_Y, REGISTER_X_PSA);
-	windows[2] = newpad(memory_length, MEMORY_WIDTH);
-	windows[3] = newwin(PSR_LENGTH, PSR_WIDTH, WINDOW_Y, PSR_X_PSA);
+	windows[0] = newpad(tab_i->size, INSTRUCTION_WIDTH);
+	windows[1] = newwin(REGISTER_LENGTH, REGISTER_WIDTH, WINDOW_Y, REGISTER_X);
+	windows[2] = newpad(tab_m->size, MEMORY_WIDTH);
+	windows[3] = newwin(PSR_LENGTH, PSR_WIDTH, WINDOW_Y, PSR_X);
+	windows[4] = newwin(SIGN_LENGTH, SIGN_WIDTH, SIGN_Y, SIGN_X);
 
-	mvprintw(HEADER_Y, (INSTRUCTION_WIDTH_PSA - strlen(headers[0])) / 2 + INSTRUCTION_X_PSA, headers[0]);
-	mvprintw(HEADER_Y, (REGISTER_WIDTH - strlen(headers[1])) / 2 + REGISTER_X_PSA, headers[1]);
-	mvprintw(HEADER_Y, (MEMORY_WIDTH - strlen(headers[2])) / 2 + MEMORY_X_PSA, headers[2]);
-	mvprintw(HEADER_Y, (PSR_WIDTH - strlen(headers[3])) / 2 + PSR_X_PSA, headers[3]);
+	if (tab_i->size > REGISTER_LENGTH) attron(A_STANDOUT);
+	mvprintw(HEADER_Y, (INSTRUCTION_WIDTH - strlen(headers[0])) / 2 + INSTRUCTION_X, headers[0]);
+	if (tab_i->size > REGISTER_LENGTH) attroff(A_STANDOUT);
+	mvprintw(HEADER_Y, (REGISTER_WIDTH - strlen(headers[1])) / 2 + REGISTER_X, headers[1]);
+	mvprintw(HEADER_Y, (MEMORY_WIDTH - strlen(headers[2])) / 2 + MEMORY_X, headers[2]);
+	mvprintw(HEADER_Y, (PSR_WIDTH - strlen(headers[3])) / 2 + PSR_X, headers[3]);
+	mvprintw(SIGN_Y + SIGN_LENGTH / 2, PSR_X, headers[4]);
 
-	box_border(min(instruction_length, REGISTER_LENGTH), INSTRUCTION_WIDTH_PSA, WINDOW_Y, INSTRUCTION_X_PSA);
-	box_border(REGISTER_LENGTH, REGISTER_WIDTH, WINDOW_Y, REGISTER_X_PSA);
-	box_border(min(memory_length, REGISTER_LENGTH), MEMORY_WIDTH, WINDOW_Y, MEMORY_X_PSA);
-	box_border(PSR_LENGTH, PSR_WIDTH, WINDOW_Y, PSR_X_PSA);
+	box_border(min(tab_i->size, REGISTER_LENGTH), INSTRUCTION_WIDTH, WINDOW_Y, INSTRUCTION_X);
+	box_border(REGISTER_LENGTH, REGISTER_WIDTH, WINDOW_Y, REGISTER_X);
+	box_border(min(tab_m->size, REGISTER_LENGTH), MEMORY_WIDTH, WINDOW_Y, MEMORY_X);
+	box_border(PSR_LENGTH, PSR_WIDTH, WINDOW_Y, PSR_X);
+	box_border(SIGN_LENGTH, SIGN_WIDTH, SIGN_Y, SIGN_X);
 
 	refresh();
 
-	prefresh(windows[0], 0, 0, WINDOW_Y, INSTRUCTION_X_PSA, WINDOW_Y + 15, INSTRUCTION_X_PSA + INSTRUCTION_WIDTH_PSA - 1);
-	wrefresh(windows[1]);
-	prefresh(windows[2], 0, 0, WINDOW_Y, MEMORY_X_PSA, WINDOW_Y + memory_length - 1, MEMORY_X_PSA + MEMORY_WIDTH - 1);
-	wrefresh(windows[3]);
-
-	for (int i = 0; i < instruction_length; i++) {
+	for (int i = 0; i < tab_i->size; i++) {
 		instruction_node tmp = tab_i->tab[i];
 		if (tmp.command[1] == 'R')
-			mvwprintw(windows[0], i, 0, "%-16s %-2s %-2d,%-16d %s %c%c", tmp.label, tmp.command, tmp.arg1, tmp.arg2, encode(tmp.command), dec(tmp.arg1), dec(tmp.arg2));
+			mvwprintw(windows[0], i, 0, "%-16s %-2s %-2d,%-16d  %-2s %c%c", tmp.label, tmp.command, tmp.arg1, tmp.arg2, encode(tmp.command), dec(tmp.arg1), dec(tmp.arg2));
 		else if (tmp.arg_label[0] == '\0') {
 			snprintf(a, 17, "%d(%d)", tmp.offset, tmp.arg2);
 			snprintf(b, 5, "%04X", tmp.offset);
-			mvwprintw(windows[0], i, 0, "%-16s %-2s %-2d,%-16s %s %c%c %c%c %c%c", tmp.label, tmp.command, tmp.arg1, a, encode(tmp.command), dec(tmp.arg1), dec(tmp.arg2), b[0], b[1], b[2], b[3]);
+			mvwprintw(windows[0], i, 0, "%-16s %-2s %-2d,%-16s  %-2s %c%c %-5s", tmp.label, tmp.command, tmp.arg1, a, encode(tmp.command), dec(tmp.arg1), dec(tmp.arg2), add_gap(b));
 		}
 		else if (tmp.command[0] == 'J') {
 			snprintf(b, 5, "%04X", tmp.offset);
-			mvwprintw(windows[0], i, 0, "%-16s %-2s %-19s %s %c%c %c%c %c%c", tmp.label, tmp.command, tmp.arg_label, encode(tmp.command), dec(tmp.arg1), dec(tmp.arg2), b[0], b[1], b[2], b[3]);
+			mvwprintw(windows[0], i, 0, "%-16s %-2s %-19s  %-2s %c%c %-5s", tmp.label, tmp.command, tmp.arg_label, encode(tmp.command), dec(tmp.arg1), dec(tmp.arg2), add_gap(b));
 		}
 		else {
 			snprintf(b, 5, "%04X", tmp.offset);
-			mvwprintw(windows[0], i, 0, "%-16s %-2s %-2d,%-16s %s %c%c %c%c %c%c", tmp.label, tmp.command, tmp.arg1, tmp.arg_label, encode(tmp.command), dec(tmp.arg1), dec(tmp.arg2), b[0], b[1], b[2], b[3]);
+			mvwprintw(windows[0], i, 0, "%-16s %-2s %-2d,%-16s  %-2s %c%c %-5s", tmp.label, tmp.command, tmp.arg1, tmp.arg_label, encode(tmp.command), dec(tmp.arg1), dec(tmp.arg2), add_gap(b));
 		}
 	}
-	prefresh(windows[0], 0, 0, WINDOW_Y, INSTRUCTION_X_PSA, WINDOW_Y + 15, INSTRUCTION_X_PSA + INSTRUCTION_WIDTH_PSA - 1);
 
-	return windows;
-}
-
-WINDOW** initMCSK() {
-	WINDOW** windows = (WINDOW**)malloc(4 * sizeof(WINDOW*));
-	int instruction_length = 10, memory_length = 10, register_length = 16, PSR_length = 1;
-	const char* headers[] = { "INSTRUCTIONS", "REGISTERS", "MEMORY", "PSR" };
-
-	windows[0] = newwin(instruction_length + 2, INSTRUCTION_WIDTH_MCSK, WINDOW_Y, INSTRUCTION_X_MCSK);
-	windows[1] = newwin(register_length + 2, REGISTER_WIDTH, WINDOW_Y, REGISTER_X_MCSK);
-	windows[2] = newwin(memory_length + 2, MEMORY_WIDTH, WINDOW_Y, MEMORY_X_MCSK);
-	windows[3] = newwin(PSR_length + 2, PSR_WIDTH, WINDOW_Y, PSR_X_MCSK);
-
-	mvprintw(HEADER_Y, (INSTRUCTION_WIDTH_MCSK - strlen(headers[0])) / 2 + INSTRUCTION_X_MCSK, headers[0]);
-	mvprintw(HEADER_Y, (REGISTER_WIDTH - strlen(headers[1])) / 2 + REGISTER_X_MCSK, headers[1]);
-	mvprintw(HEADER_Y, (MEMORY_WIDTH - strlen(headers[2])) / 2 + MEMORY_X_MCSK, headers[2]);
-	mvprintw(HEADER_Y, (PSR_WIDTH - strlen(headers[3])) / 2 + PSR_X_MCSK, headers[3]);
-
-	refresh();
-
-	for (int i = 0; i < 4; i++) {
-		scrollok(windows[i], 1);
-		box(windows[i], 0, 0);
-		wrefresh(windows[i]);
+	for (int i = 0; i < REGISTER_LENGTH; i++) {
+		snprintf(a, 9, "%08X", registers[i].value);
+		mvwprintw(windows[1], i, 0, "%-2d: %-11s", i, add_gap(a));
 	}
+	snprintf(a, 9, "%08X", registers[14].value + (memory_length - 1) * 4);
+	mvwprintw(windows[1], 14, 0, "%-2d: %-11s", 14, add_gap(a));
+	
+
+	for (int i = 0; i < tab_m->size; i++) {
+		memory_node tmp = tab_m->tab[i];
+		char a[9];
+
+		if (tmp.is_constant == '0') {
+			mvwprintw(windows[2], i, 0, "%-16s ~~ ~~ ~~ ~~", tmp.label);
+		}
+		else {
+			snprintf(a, 9, "%08X", tmp.value);
+			mvwprintw(windows[2], i, 0, "%-16s %-11s", tmp.label, add_gap(a));
+		}
+	}
+
+	strncpy_s(a, 17, &((*PSR)[47]), 16);
+	mvwprintw(windows[3], 0, 0, "%s", add_gap(a));
+
+	mvwprintw(windows[4], SIGN_LENGTH / 2, SIGN_WIDTH / 2, "%c", (*PSR)[4]);
+
+	prefresh(windows[0], 0, 0, WINDOW_Y, INSTRUCTION_X, WINDOW_Y + min(tab_i->size, REGISTER_LENGTH) - 1, INSTRUCTION_X + INSTRUCTION_WIDTH - 1);
+	wrefresh(windows[1]);
+	prefresh(windows[2], 0, 0, WINDOW_Y, MEMORY_X, WINDOW_Y + min(tab_m->size, REGISTER_LENGTH) - 1, MEMORY_X + MEMORY_WIDTH - 1);
+	wrefresh(windows[3]);
+	wrefresh(windows[4]);
 
 	return windows;
 }
@@ -135,4 +193,84 @@ void box_border(int length, int width, int y, int x) {
 		mvaddch(y - 1, x + i, ACS_HLINE);
 		mvaddch(y + length, x + i, ACS_HLINE);
 	}
+}
+
+void highlight_header(int instruction_header_length, int memory_header_length, char which) {
+	if (which == 'i') {
+		mvchgat(HEADER_Y, (INSTRUCTION_WIDTH - instruction_header_length) / 2 + INSTRUCTION_X, instruction_header_length, A_STANDOUT, 0, NULL);
+		mvchgat(HEADER_Y, (MEMORY_WIDTH - memory_header_length) / 2 + MEMORY_X, memory_header_length, A_NORMAL, 0, NULL);
+	}
+	else {
+		mvchgat(HEADER_Y, (INSTRUCTION_WIDTH - instruction_header_length) / 2 + INSTRUCTION_X, instruction_header_length, A_NORMAL, 0, NULL);
+		mvchgat(HEADER_Y, (MEMORY_WIDTH - memory_header_length) / 2 + MEMORY_X, memory_header_length, A_STANDOUT, 0, NULL);
+	}
+	refresh();
+}
+
+void update(WINDOW** windows, instruction_array *tab_i, memory_array* tab_m, reg registers[], char PSR[], int line, int instruction_offset, int memory_offset) {
+	char a[17];
+
+	mvwchgat(windows[0], line, 0, INSTRUCTION_WIDTH, A_NORMAL, 0, NULL);
+
+	wattron(windows[1], A_NORMAL);
+	if (tab_i->tab[line].command[0] != 'J') {
+		snprintf(a, 9, "%08X", registers[tab_i->tab[line].arg1].value);
+		mvwprintw(windows[1], tab_i->tab[line].arg1, 0, "%-2d: %-11s", tab_i->tab[line].arg1, add_gap(a));
+	}
+	if (tab_i->tab[line].command[0] == 'R') {
+		snprintf(a, 9, "%08X", registers[tab_i->tab[line].arg2].value);
+		mvwprintw(windows[1], tab_i->tab[line].arg2, 0, "%-2d: %-11s", tab_i->tab[line].arg2, add_gap(a));
+	}
+	wattroff(windows[1], A_NORMAL);
+
+	wattron(windows[2], A_NORMAL);
+	if (tab_i->tab[line].command[0] != 'J' && tab_i->tab[line].command[0] != 'R') {
+		mvwchgat(windows[2], (registers[tab_i->tab[line].arg2].value + tab_i->tab[line].offset) / 4, 0, LABEL_WIDTH + 1, A_NORMAL, 0, NULL);
+		if (tab_m->tab[(registers[tab_i->tab[line].arg2].value + tab_i->tab[line].offset) / 4].is_constant == '1') {
+			snprintf(a, 9, "%08X", tab_m->tab[(registers[tab_i->tab[line].arg2].value + tab_i->tab[line].offset) / 4].value);
+			mvwprintw(windows[2], (registers[tab_i->tab[line].arg2].value + tab_i->tab[line].offset) / 4, LABEL_WIDTH + 1, "%s", add_gap(a));
+		}
+		else {
+			mvwprintw(windows[2], (registers[tab_i->tab[line].arg2].value + tab_i->tab[line].offset) / 4, LABEL_WIDTH + 1, "~~ ~~ ~~ ~~");
+		}
+	}
+	wattroff(windows[2], A_NORMAL);
+
+	strncpy_s(a, 17, &PSR[47], 16);
+	mvwprintw(windows[3], 0, 0, "%s", add_gap(a));
+
+	mvwprintw(windows[4], SIGN_LENGTH / 2, SIGN_WIDTH / 2, "%c", PSR[4]);
+
+	prefresh(windows[0], instruction_offset, 0, WINDOW_Y, INSTRUCTION_X, WINDOW_Y + min(tab_i->size, REGISTER_LENGTH) - 1, INSTRUCTION_X + INSTRUCTION_WIDTH - 1);
+	wrefresh(windows[1]);
+	prefresh(windows[2], memory_offset, 0, WINDOW_Y, MEMORY_X, WINDOW_Y + min(tab_m->size, REGISTER_LENGTH) - 1, MEMORY_X + MEMORY_WIDTH - 1);
+	wrefresh(windows[3]);
+	wrefresh(windows[4]);
+}
+
+void hilighting_on(WINDOW** windows, memory_array* tab_m, instruction_array* tab_i, reg registers[], char PSR[], int line, int instruction_offset, int memory_offset) {
+	mvwchgat(windows[0], line, 0, INSTRUCTION_WIDTH, A_STANDOUT, 0, NULL);
+	if (tab_i->tab[line].command[0] != 'J')
+		mvwchgat(windows[1], tab_i->tab[line].arg1, 0, REGISTER_WIDTH, A_STANDOUT, 0, NULL);
+	if (tab_i->tab[line].command[1] == 'R')
+		mvwchgat(windows[1], tab_i->tab[line].arg2, 0, REGISTER_WIDTH, A_STANDOUT, 0, NULL);
+	if (tab_i->tab[line].command[0] != 'J' && tab_i->tab[line].command[1] != 'R')
+		mvwchgat(windows[2], (registers[tab_i->tab[line].arg2].value + tab_i->tab[line].offset) / 4, 0, MEMORY_WIDTH, A_STANDOUT, 0, NULL);
+
+	prefresh(windows[0], instruction_offset, 0, WINDOW_Y, INSTRUCTION_X, WINDOW_Y + min(tab_i->size, REGISTER_LENGTH) - 1, INSTRUCTION_X + INSTRUCTION_WIDTH - 1);
+	wrefresh(windows[1]);
+	prefresh(windows[2], memory_offset, 0, WINDOW_Y, MEMORY_X, WINDOW_Y + min(tab_m->size, REGISTER_LENGTH) - 1, MEMORY_X + MEMORY_WIDTH - 1);
+	wrefresh(windows[3]);
+}
+
+void initControlls() {
+	WINDOW* window = newwin(CONTROLLS_LENGTH, CONTROLLS_WIDTH, CONTROLLS_Y, CONTROLLS_X);
+	const char* messages[] = { "SPACE - next instruct", "UP - scroll up", "DOWN - scroll down", "LEFT - select instruct", "RIGHT - select memory", "ESC - exit" };
+	const char* header = "CONTROLLS";
+	mvprintw(CONTROLLS_HEADER_Y, (CONTROLLS_WIDTH - strlen(header)) / 2 + CONTROLLS_X, header);
+	box_border(CONTROLLS_LENGTH, CONTROLLS_WIDTH, CONTROLLS_Y, CONTROLLS_X);
+	for (int i = 0; i < CONTROLLS_LENGTH; i++)
+		mvwprintw(window, i, 0, messages[i]);
+	refresh();
+	wrefresh(window);
 }

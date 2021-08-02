@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
         if (code = import_instructions_mcsk(files.in, &tab_i)) return cleanupnexit(code, files, tab_m, tab_i);
     }
     if (code = update_instructions(tab_m, &tab_i)) return cleanupnexit(code, files, tab_m, tab_i);
-    debug(tab_m, tab_i, registers, '0');
+    debug(tab_m, tab_i, &registers, '0');
     if (files.mode == '0') {
         print_memory(files.mcsk, tab_m);
         print_instructions(files.mcsk, tab_i);

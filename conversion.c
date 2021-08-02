@@ -1,4 +1,5 @@
 #include "conversion.h"
+#include <string.h>
 
 const char* encode(char* c) {
     int val;
@@ -135,4 +136,16 @@ int dec(int n) {
         return (char)(n + 48);
     else 
         return (char)(n + 55);
+}
+
+char* add_gap(char* s) {
+    if (strlen(s) % 2 || !strlen(s)) return "";
+
+    int size = 3 * strlen(s) / 2 ;
+    char* g = (char*)malloc(size * sizeof(char));
+    for (int i = 0; i < strlen(s); i++) g[3 * i / 2] = s[i];
+    for (int i = 2; i < size; i += 3) g[i] = ' ';
+    g[size - 1] = '\0';
+    
+    return g;
 }
