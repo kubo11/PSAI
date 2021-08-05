@@ -6,10 +6,10 @@ int add_memory_node(memory_array **tab, char *label, char is_constant, int value
     memory_node* tmp = NULL;
 
     if ( (tmp = (memory_node*)realloc((*tab)->tab, ((*tab)->size + 1) * sizeof(memory_node))) == NULL )
-        return 1;
+        return 10;
     (*tab)->tab = tmp;
     if ( ((*tab)->tab[(*tab)->size].label = (char*)malloc(strlen(label)+1)) == NULL )
-        return 1;
+        return 10;
     strcpy_s((*tab)->tab[(*tab)->size].label, strlen(label)+1, label);
     (*tab)->tab[(*tab)->size].value = value;
     (*tab)->tab[(*tab)->size].is_constant = is_constant;
@@ -21,14 +21,14 @@ int add_instruction_node(instruction_array **tab, char *label, char *command, in
     instruction_node* tmp = NULL;
 
     if ( (tmp = (instruction_node*)realloc((*tab)->tab, ((*tab)->size + 1) * sizeof(instruction_node))) == NULL )
-        return 1;
+        return 10;
     (*tab)->tab = tmp;
     if ( ((*tab)->tab[(*tab)->size].label = (char*)malloc(strlen(label)+1)) == NULL )
-        return 1;
+        return 10;
     if ( ((*tab)->tab[(*tab)->size].command = (char*)malloc(strlen(command)+1)) == NULL )
-        return 1;
+        return 10;
     if ( ((*tab)->tab[(*tab)->size].arg_label = (char*)malloc(strlen(arg_label)+1)) == NULL )
-        return 1;
+        return 10;
     strcpy_s((*tab)->tab[(*tab)->size].label, strlen(label)+1, label);
     strcpy_s((*tab)->tab[(*tab)->size].command, strlen(command)+1, command);
     strcpy_s((*tab)->tab[(*tab)->size].arg_label, strlen(arg_label)+1, arg_label);
@@ -67,7 +67,7 @@ int update_instructions(memory_array *tab_m, instruction_array **tab_i){
                     }
                 }
             }
-            if (found == '0') return 1; else found = '0';
+            if (found == '0') return 4; else found = '0';
             offset = 0;
         }
     }
@@ -82,10 +82,10 @@ void delete_data(memory_array *tab_m, instruction_array *tab_i){
 }
 
 int setup_arrays(memory_array **tab_m, instruction_array **tab_i){
-    if ( ((*tab_m) = (memory_array*)malloc(sizeof(memory_array))) == NULL ) return 1;
+    if ( ((*tab_m) = (memory_array*)malloc(sizeof(memory_array))) == NULL ) return 10;
     (*tab_m)->size = 0;
     (*tab_m)->tab = NULL;
-    if ( ((*tab_i) = (instruction_array*)malloc(sizeof(instruction_array))) == NULL ) return 1;
+    if ( ((*tab_i) = (instruction_array*)malloc(sizeof(instruction_array))) == NULL ) return 10;
     (*tab_i)->size = 0;
     (*tab_i)->tab = NULL;
     return 0;

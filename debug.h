@@ -9,3 +9,6 @@ void highlight_header(int instruction_header_length, int memory_header_length, c
 void update(WINDOW** windows, instruction_array* tab_i, memory_array* tab_m, reg registers[], char PSR[], int line, int instruction_offset, int memory_offset);
 void hilighting_on(WINDOW** windows, memory_array* tab_m, instruction_array* tab_i, reg registers[], char PSR[], int line, int instruction_offset, int memory_offset);
 void initControlls();
+void autoscroll_instruction(int i, int *instruction_offset, int instruction_length, WINDOW* window);
+void autoscroll_memory(int i, int* memory_offset, int memory_length, instruction_array* tab_i, reg registers[], WINDOW* window);
+void show_exit_message(int code);

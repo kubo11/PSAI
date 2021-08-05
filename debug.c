@@ -29,6 +29,7 @@
 #define CONTROLLS_X PSR_X
 #define CONTROLLS_WIDTH PSR_WIDTH
 #define CONTROLLS_LENGTH 6
+#define EXIT_MESSAGE_Y 22
 #define KEY_SPACE 32
 #define KEY_ESCAPE 27
 
@@ -82,10 +83,15 @@ void debug(memory_array *tab_m, instruction_array *tab_i, reg registers[], char 
 			break;
 		case KEY_SPACE:
 			last = i;
-			if (i < tab_i->size - 1)
+			if (i < tab_i->size)
 				if (!(code = step(&tab_m, &tab_i, registers, &PSR, &i))) {
 					update(windows, tab_i, tab_m, registers, PSR, last, instruction_offset, memory_offset);
-					hilighting_on(windows, tab_m, tab_i, registers, PSR, i, instruction_offset, memory_offset);
+					if (i < tab_i->size) {
+						hilighting_on(windows, tab_m, tab_i, registers, PSR, i, instruction_offset, memory_offset);
+						autoscroll_instruction(i, &instruction_offset, tab_i->size, windows[0]);
+						autoscroll_memory(i, &memory_offset, tab_m->size, tab_i, registers, windows[2]);
+					}
+					else exit = '1';
 				}
 				else exit = '1';
 			else exit = '1';
@@ -95,7 +101,9 @@ void debug(memory_array *tab_m, instruction_array *tab_i, reg registers[], char 
 		}
 	}
 
-	if (exit == '1') getch();
+	show_exit_message(code);
+	getch();
+
 	endwin();
 }
 
@@ -166,7 +174,7 @@ WINDOW** initWindow(memory_array *tab_m, instruction_array *tab_i, reg registers
 		}
 	}
 
-	strncpy_s(a, 17, &((*PSR)[47]), 16);
+	strncpy_s(a, 17, &((*PSR)[48]), 16);
 	mvwprintw(windows[3], 0, 0, "%s", add_gap(a));
 
 	mvwprintw(windows[4], SIGN_LENGTH / 2, SIGN_WIDTH / 2, "%c", (*PSR)[4]);
@@ -217,14 +225,14 @@ void update(WINDOW** windows, instruction_array *tab_i, memory_array* tab_m, reg
 		snprintf(a, 9, "%08X", registers[tab_i->tab[line].arg1].value);
 		mvwprintw(windows[1], tab_i->tab[line].arg1, 0, "%-2d: %-11s", tab_i->tab[line].arg1, add_gap(a));
 	}
-	if (tab_i->tab[line].command[0] == 'R') {
+	if (tab_i->tab[line].command[1] == 'R') {
 		snprintf(a, 9, "%08X", registers[tab_i->tab[line].arg2].value);
 		mvwprintw(windows[1], tab_i->tab[line].arg2, 0, "%-2d: %-11s", tab_i->tab[line].arg2, add_gap(a));
 	}
 	wattroff(windows[1], A_NORMAL);
 
 	wattron(windows[2], A_NORMAL);
-	if (tab_i->tab[line].command[0] != 'J' && tab_i->tab[line].command[0] != 'R') {
+	if (tab_i->tab[line].command[0] != 'J' && tab_i->tab[line].command[1] != 'R') {
 		mvwchgat(windows[2], (registers[tab_i->tab[line].arg2].value + tab_i->tab[line].offset) / 4, 0, LABEL_WIDTH + 1, A_NORMAL, 0, NULL);
 		if (tab_m->tab[(registers[tab_i->tab[line].arg2].value + tab_i->tab[line].offset) / 4].is_constant == '1') {
 			snprintf(a, 9, "%08X", tab_m->tab[(registers[tab_i->tab[line].arg2].value + tab_i->tab[line].offset) / 4].value);
@@ -236,7 +244,7 @@ void update(WINDOW** windows, instruction_array *tab_i, memory_array* tab_m, reg
 	}
 	wattroff(windows[2], A_NORMAL);
 
-	strncpy_s(a, 17, &PSR[47], 16);
+	strncpy_s(a, 17, &PSR[48], 16);
 	mvwprintw(windows[3], 0, 0, "%s", add_gap(a));
 
 	mvwprintw(windows[4], SIGN_LENGTH / 2, SIGN_WIDTH / 2, "%c", PSR[4]);
@@ -273,4 +281,25 @@ void initControlls() {
 		mvwprintw(window, i, 0, messages[i]);
 	refresh();
 	wrefresh(window);
+}
+
+void autoscroll_instruction(int i, int *instruction_offset, int instruction_length, WINDOW* window) {
+	while (i < *instruction_offset && *instruction_offset > 0) (*instruction_offset)--;
+	while (i >= *instruction_offset + min(instruction_length, REGISTER_LENGTH) && *instruction_offset < instruction_length) (*instruction_offset)++;
+	prefresh(window, *instruction_offset, 0, WINDOW_Y, INSTRUCTION_X, WINDOW_Y + min(instruction_length, REGISTER_LENGTH) - 1, INSTRUCTION_X + INSTRUCTION_WIDTH - 1);
+}
+
+void autoscroll_memory(int i, int *memory_offset, int memory_length, instruction_array *tab_i, reg registers[], WINDOW* window) {
+	if (tab_i->tab[i].command[0] != 'J' && tab_i->tab[i].command[1] != 'R') {
+		while ((registers[tab_i->tab[i].arg2].value + tab_i->tab[i].offset) /4 < *memory_offset && *memory_offset > 0) (*memory_offset)--;
+		while ((registers[tab_i->tab[i].arg2].value + tab_i->tab[i].offset) / 4 >= *memory_offset + min(memory_length, REGISTER_LENGTH) && *memory_offset < memory_length) (*memory_offset)++;
+		prefresh(window, *memory_offset, 0, WINDOW_Y, MEMORY_X, WINDOW_Y + min(memory_length, REGISTER_LENGTH) - 1, MEMORY_X + MEMORY_WIDTH - 1);
+	}
+}
+
+void show_exit_message(int code) {
+	if (code)
+		mvprintw(EXIT_MESSAGE_Y, WINDOW_X, code_to_msg(code)), " (press any key to exit)";
+	else
+		mvprintw(EXIT_MESSAGE_Y, WINDOW_X, "PROGRAM ENDED SUCCESSFULLY (press any key to exit)");
 }

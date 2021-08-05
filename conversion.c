@@ -119,6 +119,10 @@ const char* code_to_msg(int code) {
         return "WRONG JUMP ADDRESS";
     case 8:
         return "CLOSE FILE";
+    case 9:
+        return "WRONG ARGUMENTS";
+    case 10:
+        return "OUT OF MEMORY";
     default:
         return "";
     }
