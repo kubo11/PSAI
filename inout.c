@@ -12,7 +12,7 @@
 #define extension_length 16
 #define combined_length (path_length + 9)
 
-int import_memory_psa(FILE *input, memory_array **tab){
+int import_memory_psa(FILE *input, memory_array **tab){     //reads memory section from psa file
     char buffer[buffer_size], label[label_size], command[command_size];
     int i = 0, value = 0, amount = 0, code;
 
@@ -57,7 +57,7 @@ int import_memory_psa(FILE *input, memory_array **tab){
     return 0;
 }
 
-int import_memory_mcsk(FILE *input, memory_array **tab){
+int import_memory_mcsk(FILE *input, memory_array **tab){        //reads memory section from mcsk file
     char buffer[buffer_size];
     int num = 0, first, i, base = 1, code;
 
@@ -82,7 +82,7 @@ int import_memory_mcsk(FILE *input, memory_array **tab){
     return 0;
 }
 
-int import_instructions_psa(FILE *input, instruction_array **tab){
+int import_instructions_psa(FILE *input, instruction_array **tab){      //reads instruction section from psa file
     char buffer[buffer_size], label[label_size], command[command_size], arg_label[label_size] = { '\0' };
     const char *check;
     int i = 0, arg1 = 0, arg2 = 0, offset = 0;
@@ -144,7 +144,7 @@ int import_instructions_psa(FILE *input, instruction_array **tab){
     return 0;
 }
 
-int import_instructions_mcsk(FILE *input, instruction_array **tab){
+int import_instructions_mcsk(FILE *input, instruction_array **tab){     //reads instruction section from mcsk file
     char buffer[buffer_size], command[command_size];
     int arg1, arg2, offset = 0;
 
@@ -164,7 +164,7 @@ int import_instructions_mcsk(FILE *input, instruction_array **tab){
     return 0;
 }
 
-int print_memory(FILE *output, memory_array *tab){
+int print_memory(FILE *output, memory_array *tab){      //writes memory section to mcsk file
     int i;
     char hex[9];
 
@@ -178,7 +178,7 @@ int print_memory(FILE *output, memory_array *tab){
     return 0;
 }
 
-int print_instructions(FILE *output, instruction_array *tab){
+int print_instructions(FILE *output, instruction_array *tab){       //writes instruction section to mcsk file
     int i;
     char hex[5];
 
@@ -191,12 +191,12 @@ int print_instructions(FILE *output, instruction_array *tab){
     return 0;
 }
 
-void skip(char *buffer, int *i){
+void skip(char *buffer, int *i){        //skpis any spaces and tabs in buffer
     while( buffer[(*i)] == ' ' || buffer[(*i)] == '\t' )
         (*i)++;
 }
 
-void read_string(char *buffer, int *i, char *var, int size){
+void read_string(char *buffer, int *i, char *var, int size){        //reads string form buffer until finds space, tab, new line, carrige return of file ends
     int j = 0;
 
     while( buffer[(*i)] != ' ' && buffer[(*i)] != '\t' && buffer[(*i)] != '\n' && buffer[(*i)] != '\r' && j < size ){
@@ -207,7 +207,7 @@ void read_string(char *buffer, int *i, char *var, int size){
     var[j] = '\0';
 }
 
-void read_integer(char *buffer, int *i, int *number){
+void read_integer(char *buffer, int *i, int *number){       //reads integer form buffer until finds character other than decimal digit
     char negative = '0';
 
     (*number) = 0;
@@ -224,7 +224,7 @@ void read_integer(char *buffer, int *i, int *number){
         (*number) *= -1;
 }
 
-fileio open_files(int argc, char **argv) {
+fileio open_files(int argc, char **argv) {      //opens needed input and output files, gives output files dynamic filenames, returns error if fails to open any file
     errno_t err;
     fileio files;
     int i = 0, length = 0, tmp;
@@ -268,7 +268,7 @@ fileio open_files(int argc, char **argv) {
     return files;
 }
 
-int close_files(fileio files) {
+int close_files(fileio files) {     //closes all opened files, returns error if it fails to do so
     if (files.in) 
         if (fclose(files.in)) return 8;
     if (files.out) 
@@ -278,7 +278,7 @@ int close_files(fileio files) {
     return 0;
 }
 
-int check_input_arguments(int argc, char** argv) {
+int check_input_arguments(int argc, char** argv) {      //checks if program input arguments are valid
     if (argc > 4)
         return 9;
     if (argc > 2 && strcmp(argv[2], "psa_code") && strcmp(argv[2], "mcsk_code"))
@@ -288,7 +288,7 @@ int check_input_arguments(int argc, char** argv) {
     return 0;
 }
 
-int cleanupnexit(int code, fileio files, memory_array* tab_m, instruction_array* tab_i) {
+int cleanupnexit(int code, fileio files, memory_array* tab_m, instruction_array* tab_i) {       //prints error message, deletes data, closes files and returns exit code
     printf("%s\n", code_to_msg(code));
     delete_data(tab_m, tab_i);
     if (close_files(files)) printf("%s\n", code_to_msg(8));

@@ -1,7 +1,7 @@
 #include "conversion.h"
 #include <string.h>
 
-const char* encode(char* c) {
+const char* encode(char* c) {       //accepts command code and returns corresponding machine code
     int val;
     if (c[1] != ' ' && c[1] != '\0')
         val = (int)c[0] + (int)c[1];
@@ -53,7 +53,7 @@ const char* encode(char* c) {
     }
 }
 
-const char* decode(char* c) {
+const char* decode(char* c) {       //accepts machine code and returns corresponding command code
     int val = (int)c[0] * 37 + (int)c[1];
     switch (val) {
         case 2565:        //A
@@ -101,14 +101,14 @@ const char* decode(char* c) {
     }
 }
 
-const char* code_to_msg(int code) {
+const char* code_to_msg(int code) {     //accepts error code and returns its message
     switch (code) {
     case 1:
-        return "OPEN FILE";
+        return "COULD NOT OPEN FILE";
     case 2:
-        return "MEMORY SYNTAX";
+        return "INVALID MEMORY SYNTAX";
     case 3:
-        return "INSTRUCTION SYNTAX";
+        return "INVALID INSTRUCTION SYNTAX";
     case 4:
         return "LABEL DOESN'T EXIST";
     case 5:
@@ -118,9 +118,9 @@ const char* code_to_msg(int code) {
     case 7:
         return "WRONG JUMP ADDRESS";
     case 8:
-        return "CLOSE FILE";
+        return "COULD NOT CLOSE FILE";
     case 9:
-        return "WRONG ARGUMENTS";
+        return "WRONG PROGRAM ARGUMENTS";
     case 10:
         return "OUT OF MEMORY";
     default:
@@ -128,21 +128,21 @@ const char* code_to_msg(int code) {
     }
 }
 
-int hex(char c) {
+int hex(char c) {       //converts char hex to int dec
     if (c <= '9')
         return (int)(c - 48);
     else
         return (int)(c - 55);
 }
 
-int dec(int n) {
+int dec(int n) {        //converts int dec to char hex
     if (n <= 9)
         return (char)(n + 48);
     else 
         return (char)(n + 55);
 }
 
-char* add_gap(char* s) {
+char* add_gap(char* s) {        //adds space after every even character of given string, returns empty string if inputs length is odd
     if (strlen(s) % 2 || !strlen(s)) return "";
 
     int size = 3 * strlen(s) / 2 ;

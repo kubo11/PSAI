@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <limits.h>
 
-int step(memory_array **tab_m, instruction_array **tab_i, reg (*registers)[], char (*PSR)[], int *i) {
+int step(memory_array **tab_m, instruction_array **tab_i, reg (*registers)[], char (*PSR)[], int *i) {      //executes one instruction
     if ((*tab_i)->tab[(*i)].command[0] == 'J'){
         return jump((*tab_i)->tab[(*i)].command[1], get_sign_PSR((*PSR)), (*registers)[(*tab_i)->tab[(*i)].arg2].type, (*registers)[(*tab_i)->tab[(*i)].arg2].value + (*tab_i)->tab[(*i)].offset, i, (*tab_i)->size - 1, **tab_i, PSR, (*tab_m)->size);
     }
@@ -56,7 +56,7 @@ int step(memory_array **tab_m, instruction_array **tab_i, reg (*registers)[], ch
     return 3;
 }
 
-int execute(memory_array **tab_m, instruction_array **tab_i, reg (*registers)[]){
+int execute(memory_array **tab_m, instruction_array **tab_i, reg (*registers)[]){       //executes all instructions
     int i = 0, code;
     char PSR[64];
 
@@ -68,14 +68,14 @@ int execute(memory_array **tab_m, instruction_array **tab_i, reg (*registers)[])
     return 0;
 }
 
-int get_sign_PSR(char *PSR){
+int get_sign_PSR(char *PSR){        //returns sign of last operation based on PSR
     if (PSR[4] == '0') return 0;
     else if (PSR[4] == '4') return 1;
     else if (PSR[4] == '8') return -1;
     else return 2;
 }
 
-int get_sign_number(int n){
+int get_sign_number(int n){     //returns sign of given value
     if (n > 0)
         return 1;
     else if (n < 0)
@@ -83,14 +83,14 @@ int get_sign_number(int n){
     else return 0;
 }
 
-int check_jump_conditions(char c, int sign){
+int check_jump_conditions(char c, int sign){        //checks if jump conditions are met
     if(c == '\0' || (c == 'P' && sign == 1) || (c == 'Z' && sign == 0) || (c == 'N' && sign == -1))
         return 1;
     else
         return 0;
 }
 
-void update_PSR(char (*PSR)[], int sign, int addr){
+void update_PSR(char (*PSR)[], int sign, int addr){     //updates PSR with last operation's sign and next instruction address
     char address[33];
     int i;
 
@@ -103,12 +103,12 @@ void update_PSR(char (*PSR)[], int sign, int addr){
         (*PSR)[i] = address[i - 32];
 }
 
-int min(int a, int b){
+int min(int a, int b){      //returns minimum of two integer values
     if(a < b) return a;
     else return b;
 }
 
-int add(int *x, int y, char (*PSR)[], instruction_array tab_i, int *i, int memory_offset) {
+int add(int *x, int y, char (*PSR)[], instruction_array tab_i, int *i, int memory_offset) {     //executes add instruction, checks for potential overflow
     if ((*x) > 0 && y > INT_MAX - (*x)) {
         update_PSR(PSR, 2, -1);
         return 5;
@@ -127,7 +127,7 @@ int add(int *x, int y, char (*PSR)[], instruction_array tab_i, int *i, int memor
     return 0;
 }
 
-int subtract(int *x, int y, char(*PSR)[], instruction_array tab_i, int* i, int memory_offset) {
+int subtract(int *x, int y, char(*PSR)[], instruction_array tab_i, int* i, int memory_offset) {     //executes subtract instruction, checks for potential overflow
     if ((*x) > 0 && y < (*x) + INT_MIN) {
         update_PSR(PSR, 2, -1);
         return 5;
@@ -146,7 +146,7 @@ int subtract(int *x, int y, char(*PSR)[], instruction_array tab_i, int* i, int m
     return 0;
 }
 
-int multiply(int *x, int y, char(*PSR)[], instruction_array tab_i, int* i, int memory_offset) {
+int multiply(int *x, int y, char(*PSR)[], instruction_array tab_i, int* i, int memory_offset) {     //executes multiply instruction, checks for potential overflow
     if (((*x) == INT_MIN && y == -1) || ((*x) == -1 && y == INT_MIN)) {
         update_PSR(PSR, 2, -1);
         return 5;
@@ -171,7 +171,7 @@ int multiply(int *x, int y, char(*PSR)[], instruction_array tab_i, int* i, int m
     return 0;
 }
 
-int divide(int* x, int y, char(*PSR)[], instruction_array tab_i, int* i, int memory_offset) {
+int divide(int* x, int y, char(*PSR)[], instruction_array tab_i, int* i, int memory_offset) {       //executes divide instruction, checks for potential overflow and division by zero
     if (y == 0) {
         update_PSR(PSR, 2, -1);
         return 6;
@@ -190,7 +190,7 @@ int divide(int* x, int y, char(*PSR)[], instruction_array tab_i, int* i, int mem
     return 0;
 }
 
-int jump(char jump_type, int sign, char value_type, int address, int *i, int size, instruction_array tab_i, char(*PSR)[], int memory_offset) {
+int jump(char jump_type, int sign, char value_type, int address, int *i, int size, instruction_array tab_i, char(*PSR)[], int memory_offset) {      //executes jump instruction, returns error if supplied label or address was invalid
      if (check_jump_conditions(jump_type, sign)) {
         if (value_type == 'i') {
             (*i) = bin_search(address / 4, min(address / 2, size), tab_i.tab, address);
@@ -215,7 +215,7 @@ int jump(char jump_type, int sign, char value_type, int address, int *i, int siz
     return 0;
 }
 
-int compare(int x, int y, char(*PSR)[], instruction_array tab_i, int* i, int memory_offset) {
+int compare(int x, int y, char(*PSR)[], instruction_array tab_i, int* i, int memory_offset) {       //executes compare instruction, checks for potential overflow
     if (x > 0 && y < x + INT_MIN) {
         update_PSR(PSR, 2, -1);
         return 5;
@@ -233,7 +233,7 @@ int compare(int x, int y, char(*PSR)[], instruction_array tab_i, int* i, int mem
     return 0;
 }
 
-int store(int *x, char *is_constant, int y, char(*PSR)[], instruction_array tab_i, int* i, int memory_offset) {
+int store(int *x, char *is_constant, int y, char(*PSR)[], instruction_array tab_i, int* i, int memory_offset) {     //executes store instruction
     (*x) = y;
     (*is_constant) = '1';
     (*i)++;
@@ -244,7 +244,7 @@ int store(int *x, char *is_constant, int y, char(*PSR)[], instruction_array tab_
     return 0;
 }
 
-int load(int *x_value, char *x_type, int y_value, char y_type, char(*PSR)[], instruction_array tab_i, int* i, int memory_offset) {
+int load(int *x_value, char *x_type, int y_value, char y_type, char(*PSR)[], instruction_array tab_i, int* i, int memory_offset) {      //executes load instruction
     (*x_value) = y_value;
     (*x_type) = y_type;
     (*i)++;

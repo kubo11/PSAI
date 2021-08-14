@@ -33,7 +33,7 @@
 #define KEY_SPACE 32
 #define KEY_ESCAPE 27
 
-void debug(memory_array *tab_m, instruction_array *tab_i, reg registers[], char mode) {
+void debug(memory_array *tab_m, instruction_array *tab_i, reg registers[], char mode) {		//sets up window for debug mode, waits for input from user and calls appropriate functions
 	WINDOW** windows = NULL, ** current_window = NULL;
 	char PSR[64];
 	const char* headers[] = { "INSTRUCTIONS", "REGISTERS", "MEMORY", "PSR", "LAST OPERATION SIGN"};
@@ -108,7 +108,7 @@ void debug(memory_array *tab_m, instruction_array *tab_i, reg registers[], char 
 }
 
 
-WINDOW** initWindow(memory_array *tab_m, instruction_array *tab_i, reg registers[], char(*PSR)[], const char* headers[], int memory_length) {
+WINDOW** initWindow(memory_array *tab_m, instruction_array *tab_i, reg registers[], char(*PSR)[], const char* headers[], int memory_length) {	//initializes debug mode window
 	WINDOW** windows = (WINDOW**)malloc(5 * sizeof(WINDOW*));
 	char a[17], b[5];
 
@@ -188,7 +188,7 @@ WINDOW** initWindow(memory_array *tab_m, instruction_array *tab_i, reg registers
 	return windows;
 }
 
-void box_border(int length, int width, int y, int x) {
+void box_border(int length, int width, int y, int x) {		//draws border around given window coordinates
 	mvaddch(y - 1, x - 1, ACS_ULCORNER);
 	mvaddch(y - 1, x + width, ACS_URCORNER);
 	mvaddch(y + length, x - 1, ACS_LLCORNER);
@@ -203,7 +203,7 @@ void box_border(int length, int width, int y, int x) {
 	}
 }
 
-void highlight_header(int instruction_header_length, int memory_header_length, char which) {
+void highlight_header(int instruction_header_length, int memory_header_length, char which) {		//hilights memory or instruction header and unhilights the other one
 	if (which == 'i') {
 		mvchgat(HEADER_Y, (INSTRUCTION_WIDTH - instruction_header_length) / 2 + INSTRUCTION_X, instruction_header_length, A_STANDOUT, 0, NULL);
 		mvchgat(HEADER_Y, (MEMORY_WIDTH - memory_header_length) / 2 + MEMORY_X, memory_header_length, A_NORMAL, 0, NULL);
@@ -215,7 +215,7 @@ void highlight_header(int instruction_header_length, int memory_header_length, c
 	refresh();
 }
 
-void update(WINDOW** windows, instruction_array *tab_i, memory_array* tab_m, reg registers[], char PSR[], int line, int instruction_offset, int memory_offset) {
+void update(WINDOW** windows, instruction_array *tab_i, memory_array* tab_m, reg registers[], char PSR[], int line, int instruction_offset, int memory_offset) {		//updates all windows with new data and unhilights previous instruction data
 	char a[17];
 
 	mvwchgat(windows[0], line, 0, INSTRUCTION_WIDTH, A_NORMAL, 0, NULL);
@@ -256,7 +256,7 @@ void update(WINDOW** windows, instruction_array *tab_i, memory_array* tab_m, reg
 	wrefresh(windows[4]);
 }
 
-void hilighting_on(WINDOW** windows, memory_array* tab_m, instruction_array* tab_i, reg registers[], char PSR[], int line, int instruction_offset, int memory_offset) {
+void hilighting_on(WINDOW** windows, memory_array* tab_m, instruction_array* tab_i, reg registers[], char PSR[], int line, int instruction_offset, int memory_offset) {		//hilights new instruction data
 	mvwchgat(windows[0], line, 0, INSTRUCTION_WIDTH, A_STANDOUT, 0, NULL);
 	if (tab_i->tab[line].command[0] != 'J')
 		mvwchgat(windows[1], tab_i->tab[line].arg1, 0, REGISTER_WIDTH, A_STANDOUT, 0, NULL);
@@ -271,7 +271,7 @@ void hilighting_on(WINDOW** windows, memory_array* tab_m, instruction_array* tab
 	wrefresh(windows[3]);
 }
 
-void initControlls() {
+void initControlls() {		//initializes window showing information about controlls in debug mode
 	WINDOW* window = newwin(CONTROLLS_LENGTH, CONTROLLS_WIDTH, CONTROLLS_Y, CONTROLLS_X);
 	const char* messages[] = { "SPACE - next instruct", "UP - scroll up", "DOWN - scroll down", "LEFT - select instruct", "RIGHT - select memory", "ESC - exit" };
 	const char* header = "CONTROLLS";
@@ -283,13 +283,13 @@ void initControlls() {
 	wrefresh(window);
 }
 
-void autoscroll_instruction(int i, int *instruction_offset, int instruction_length, WINDOW* window) {
+void autoscroll_instruction(int i, int *instruction_offset, int instruction_length, WINDOW* window) {		//scrolls instruction window if hilighted instruction is off-screen
 	while (i < *instruction_offset && *instruction_offset > 0) (*instruction_offset)--;
 	while (i >= *instruction_offset + min(instruction_length, REGISTER_LENGTH) && *instruction_offset < instruction_length) (*instruction_offset)++;
 	prefresh(window, *instruction_offset, 0, WINDOW_Y, INSTRUCTION_X, WINDOW_Y + min(instruction_length, REGISTER_LENGTH) - 1, INSTRUCTION_X + INSTRUCTION_WIDTH - 1);
 }
 
-void autoscroll_memory(int i, int *memory_offset, int memory_length, instruction_array *tab_i, reg registers[], WINDOW* window) {
+void autoscroll_memory(int i, int *memory_offset, int memory_length, instruction_array *tab_i, reg registers[], WINDOW* window) {		//scrolls memory window if hilighted variable is off-screen
 	if (tab_i->tab[i].command[0] != 'J' && tab_i->tab[i].command[1] != 'R') {
 		while ((registers[tab_i->tab[i].arg2].value + tab_i->tab[i].offset) /4 < *memory_offset && *memory_offset > 0) (*memory_offset)--;
 		while ((registers[tab_i->tab[i].arg2].value + tab_i->tab[i].offset) / 4 >= *memory_offset + min(memory_length, REGISTER_LENGTH) && *memory_offset < memory_length) (*memory_offset)++;
@@ -297,7 +297,7 @@ void autoscroll_memory(int i, int *memory_offset, int memory_length, instruction
 	}
 }
 
-void show_exit_message(int code) {
+void show_exit_message(int code) {		//prints exit message to window
 	if (code)
 		mvprintw(EXIT_MESSAGE_Y, WINDOW_X, code_to_msg(code)), " (press any key to exit)";
 	else

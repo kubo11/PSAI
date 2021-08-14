@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-int add_memory_node(memory_array **tab, char *label, char is_constant, int value){
+int add_memory_node(memory_array **tab, char *label, char is_constant, int value){      //adds struct containing information about new variable to memory array
     memory_node* tmp = NULL;
 
     if ( (tmp = (memory_node*)realloc((*tab)->tab, ((*tab)->size + 1) * sizeof(memory_node))) == NULL )
@@ -17,7 +17,7 @@ int add_memory_node(memory_array **tab, char *label, char is_constant, int value
     return 0;
 }
 
-int add_instruction_node(instruction_array **tab, char *label, char *command, int arg1, int arg2, int offset, char *arg_label){
+int add_instruction_node(instruction_array **tab, char *label, char *command, int arg1, int arg2, int offset, char *arg_label){     //adds struct containing information about new instruction to instruction array
     instruction_node* tmp = NULL;
 
     if ( (tmp = (instruction_node*)realloc((*tab)->tab, ((*tab)->size + 1) * sizeof(instruction_node))) == NULL )
@@ -43,7 +43,7 @@ int add_instruction_node(instruction_array **tab, char *label, char *command, in
     return 0;
 }
 
-int update_instructions(memory_array *tab_m, instruction_array **tab_i){
+int update_instructions(memory_array *tab_m, instruction_array **tab_i){        //updates address information of instructions where label was supplied as an argument
     int i, j, offset = 0;
     char found = '0';
 
@@ -74,14 +74,14 @@ int update_instructions(memory_array *tab_m, instruction_array **tab_i){
     return 0;
 }
 
-void delete_data(memory_array *tab_m, instruction_array *tab_i){
+void delete_data(memory_array *tab_m, instruction_array *tab_i){        //deletes instruction and memory arrays
     free(tab_m->tab);
     free(tab_m);
     free(tab_i->tab);
     free(tab_i);
 }
 
-int setup_arrays(memory_array **tab_m, instruction_array **tab_i){
+int setup_arrays(memory_array **tab_m, instruction_array **tab_i){      //allocates space for memory and instructions arrays, sets default values to NULL and 0
     if ( ((*tab_m) = (memory_array*)malloc(sizeof(memory_array))) == NULL ) return 10;
     (*tab_m)->size = 0;
     (*tab_m)->tab = NULL;
@@ -91,7 +91,7 @@ int setup_arrays(memory_array **tab_m, instruction_array **tab_i){
     return 0;
 }
 
-int setup_registers(reg (*registers)[]){
+int setup_registers(reg (*registers)[]){        //gives every register value of zero and type value, assigns type instruction address to register 14 and memory address to register 15 
     int i;
 
     for (i = 0; i < 14; i++){
@@ -105,7 +105,7 @@ int setup_registers(reg (*registers)[]){
     return 0;
 }
 
-int bin_search(int p, int k, instruction_node tab[], int w){
+int bin_search(int p, int k, instruction_node tab[], int w){        //performs binary search by address on instruction array
     int s;
     while(p <= k){
         s = (p + k) / 2;
