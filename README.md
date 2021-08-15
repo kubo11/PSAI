@@ -42,7 +42,7 @@ Program arguments:
 
 For more information about pseudoassembly see [DOCUMENTATION.md](https://github.com/kubo11/PSAI/blob/master/DOCUMENTATION.md).
 
-## Project status: _in testing_
+## Project status: _finished_
 
 ## License
 
