@@ -1,0 +1,19 @@
+//Calculate n-th number in Fibonacci's sequence
+N	DC INTEGER(10)
+ONE	DC INTEGER(1)
+THREE	DC INTEGER(3)
+RESULT	DS INTEGER
+
+	L 0,N
+	L 1,ONE
+	L 2,ONE
+LOOP	C 0,THREE
+	JN END
+	LR 3,2
+	AR 3,1
+	LR 1,2
+	LR 2,3
+	S 0,ONE
+	J LOOP
+END	ST 2,RESULT
+
