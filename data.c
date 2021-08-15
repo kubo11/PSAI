@@ -75,10 +75,14 @@ int update_instructions(memory_array *tab_m, instruction_array **tab_i){        
 }
 
 void delete_data(memory_array *tab_m, instruction_array *tab_i){        //deletes instruction and memory arrays
-    free(tab_m->tab);
-    free(tab_m);
-    free(tab_i->tab);
-    free(tab_i);
+    if (tab_m) {
+        if (tab_m->size > 0 && tab_m->tab) free(tab_m->tab);
+        free(tab_m);
+    }
+    if (tab_i) {
+        if (tab_i->size > 0 && tab_i->tab) free(tab_i->tab);
+        free(tab_i);
+    }
 }
 
 int setup_arrays(memory_array **tab_m, instruction_array **tab_i){      //allocates space for memory and instructions arrays, sets default values to NULL and 0
@@ -91,7 +95,7 @@ int setup_arrays(memory_array **tab_m, instruction_array **tab_i){      //alloca
     return 0;
 }
 
-int setup_registers(reg (*registers)[]){        //gives every register value of zero and type value, assigns type instruction address to register 14 and memory address to register 15 
+int setup_registers(reg (*registers)[], int memory_offset){        //gives every register value of zero and type value, assigns type instruction address to register 14 and memory address to register 15 
     int i;
 
     for (i = 0; i < 14; i++){
@@ -99,7 +103,7 @@ int setup_registers(reg (*registers)[]){        //gives every register value of 
         (*registers)[i].value = 0;
     }
     (*registers)[14].type = 'i';
-    (*registers)[14].value = 0;
+    (*registers)[14].value = memory_offset * 4;
     (*registers)[15].type = 'm';
     (*registers)[15].value = 0;
     return 0;

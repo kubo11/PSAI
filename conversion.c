@@ -1,5 +1,6 @@
 #include "conversion.h"
 #include <string.h>
+#include <stdlib.h>
 
 const char* encode(char* c) {       //accepts command code and returns corresponding machine code
     int val;
@@ -93,9 +94,9 @@ const char* decode(char* c) {       //accepts machine code and returns correspon
         case 2641:       //ST
             return "ST";
         case 2583:       //DC
-            return "DC";
+            return "XC";
         case 2599:       //DS
-            return "DS";
+            return "XS";
         default:        //ERROR
             return "!";
     }
@@ -123,6 +124,8 @@ const char* code_to_msg(int code) {     //accepts error code and returns its mes
         return "WRONG PROGRAM ARGUMENTS";
     case 10:
         return "OUT OF MEMORY";
+    case 11:
+        return "ACCESSING ADDRESS OUT OF BOUNDS";
     default:
         return "";
     }
@@ -143,10 +146,11 @@ int dec(int n) {        //converts int dec to char hex
 }
 
 char* add_gap(char* s) {        //adds space after every even character of given string, returns empty string if inputs length is odd
-    if (strlen(s) % 2 || !strlen(s)) return "";
+    if (strlen(s) % 2 || strlen(s) <= 0) return "";
 
     int size = 3 * strlen(s) / 2 ;
     char* g = (char*)malloc(size * sizeof(char));
+    if (!g) return "";
     for (int i = 0; i < strlen(s); i++) g[3 * i / 2] = s[i];
     for (int i = 2; i < size; i += 3) g[i] = ' ';
     g[size - 1] = '\0';

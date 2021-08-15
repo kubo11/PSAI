@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 
 #define buffer_size 128
 #define label_size 16
@@ -16,6 +17,7 @@ int import_memory_psa(FILE *input, memory_array **tab){     //reads memory secti
     char buffer[buffer_size], label[label_size], command[command_size];
     int i = 0, value = 0, amount = 0, code;
 
+    srand(time(0));
     while(fgets(buffer, buffer_size, input) != NULL){
         if(buffer[0] == '/')
             continue;
@@ -62,9 +64,10 @@ int import_memory_mcsk(FILE *input, memory_array **tab){        //reads memory s
     int num = 0, first, i, base = 1, code;
 
     while (fgets(buffer, buffer_size, input) != NULL){
-        if (buffer[0] == '\n' || buffer[0] == '\r') return 2;
-        if (buffer[0] == '~')
+        if (buffer[0] == '\n' || buffer[0] == '\r') break;
+        if (buffer[0] == '~') {
             if (code = add_memory_node(tab, "", '0', 0)) return code;
+        }
         else{
             first = hex(buffer[0]);
             num += ((first/8)%2 * (INT_MIN));
@@ -77,6 +80,8 @@ int import_memory_mcsk(FILE *input, memory_array **tab){        //reads memory s
                 base *= 16;
             }
             if (code = add_memory_node(tab, "", '1', num)) return code;
+            base = 1;
+            num = 0;
         }
     }
     return 0;
@@ -149,12 +154,12 @@ int import_instructions_mcsk(FILE *input, instruction_array **tab){     //reads 
     int arg1, arg2, offset = 0;
 
     while (fgets(buffer, buffer_size, input) != NULL){
-        if (buffer[0] == '\n' || buffer[0] == '\r') return 3;
+        if (buffer[0] == '\n' || buffer[0] == '\r') break;
         command[0] = buffer[0];
         command[1] = buffer[1];
         command[2] = '\0';
         strcpy_s(command, 3, decode(command));
-        if (command[0] == '!' || command[0] == 'D') return 3;
+        if (command[0] == '!' || command[0] == 'X') return 3;
         arg1 = hex(buffer[3]);
         arg2 = hex(buffer[4]);
         if (buffer[5] == ' ')
@@ -170,8 +175,8 @@ int print_memory(FILE *output, memory_array *tab){      //writes memory section 
 
     for (i = 0; i < tab->size; i++){
         if (tab->tab[i].is_constant == '1'){
-            _snprintf_s(hex, 9, 9, "%08X", tab->tab[i].value);
-            fprintf_s(output, "%c%c %c%c %c%c %c%c\n", hex[0], hex[1], hex[2], hex[3], hex[4], hex[5], hex[6], hex[7]);
+            snprintf(hex, 9, "%08X", tab->tab[i].value);
+            fprintf_s(output, "%s\n", add_gap(hex));
         } else fprintf_s(output, "~~ ~~ ~~ ~~\n");
     }
     fprintf_s(output, "\n");
@@ -184,8 +189,8 @@ int print_instructions(FILE *output, instruction_array *tab){       //writes ins
 
     for (i = 0; i < tab->size; i++){
         if (tab->tab[i].command[1] != 'R'){
-            _snprintf_s(hex, 5, 5, "%04X", tab->tab[i].offset);
-            fprintf_s(output, "%s %X%X %c%c %c%c\n", encode(tab->tab[i].command), tab->tab[i].arg1, tab->tab[i].arg2, hex[0], hex[1], hex[2], hex[3]);
+            snprintf(hex, 5, "%04X", tab->tab[i].offset);
+            fprintf_s(output, "%s %X%X %s\n", encode(tab->tab[i].command), tab->tab[i].arg1, tab->tab[i].arg2, add_gap(hex));
         }else fprintf_s(output, "%s %X%X\n", encode(tab->tab[i].command), tab->tab[i].arg1, tab->tab[i].arg2);
     }
     return 0;
@@ -234,6 +239,7 @@ fileio open_files(int argc, char **argv) {      //opens needed input and output 
         do {
             printf("Podaj sciezke do pliku: ");
             scanf_s("%s", path, path_length);
+            path[path_length - 1] = '\0';
         } while (err = fopen_s(&files.in, path, "r"));
     else strcpy_s(path, path_length, argv[1]);
     
@@ -268,12 +274,12 @@ fileio open_files(int argc, char **argv) {      //opens needed input and output 
     return files;
 }
 
-int close_files(fileio files) {     //closes all opened files, returns error if it fails to do so
-    if (files.in) 
+int close_files(fileio files, char mode) {     //closes all opened files, returns error if it fails to do so
+    if (files.in != NULL) 
         if (fclose(files.in)) return 8;
-    if (files.out) 
+    if (files.out != NULL)
         if (fclose(files.out)) return 8;
-    if (files.mcsk)
+    if (mode == '0' && files.mcsk != NULL)
         if (fclose(files.mcsk)) return 8;
     return 0;
 }
@@ -291,6 +297,6 @@ int check_input_arguments(int argc, char** argv) {      //checks if program inpu
 int cleanupnexit(int code, fileio files, memory_array* tab_m, instruction_array* tab_i) {       //prints error message, deletes data, closes files and returns exit code
     printf("%s\n", code_to_msg(code));
     delete_data(tab_m, tab_i);
-    if (close_files(files)) printf("%s\n", code_to_msg(8));
+    if (close_files(files, files.mode)) printf("%s\n", code_to_msg(8));
     return code;
 }

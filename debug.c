@@ -28,16 +28,22 @@
 #define CONTROLLS_Y CONTROLLS_HEADER_Y + 2
 #define CONTROLLS_X PSR_X
 #define CONTROLLS_WIDTH PSR_WIDTH
-#define CONTROLLS_LENGTH 6
+#define CONTROLLS_LENGTH 7
 #define EXIT_MESSAGE_Y 22
 #define KEY_SPACE 32
 #define KEY_ESCAPE 27
+#define KEY_TAB 9
 
-void debug(memory_array *tab_m, instruction_array *tab_i, reg registers[], char mode) {		//sets up window for debug mode, waits for input from user and calls appropriate functions
+int debug(memory_array *tab_m, instruction_array *tab_i, reg registers[]) {		//sets up window for debug mode, waits for input from user and calls appropriate functions
 	WINDOW** windows = NULL, ** current_window = NULL;
 	char PSR[64];
 	const char* headers[] = { "INSTRUCTIONS", "REGISTERS", "MEMORY", "PSR", "LAST OPERATION SIGN"};
-	int i = 0, instruction_offset = 0, memory_offset = 0, code = 0, key, exit = '0', last = 0;
+	int i = 0, instruction_offset = 0, memory_offset = 0, code = 0, key, last = 0;
+
+	if (tab_i->size == 0) {
+		printf("NO INSTRUCTIONS TO DEBUG");
+		return 0;
+	}
 
 	initscr();
 	noecho();
@@ -48,25 +54,29 @@ void debug(memory_array *tab_m, instruction_array *tab_i, reg registers[], char 
 	for (int i = 0; i < 64; i++) PSR[i] = '0';
 	windows = initWindow(tab_m, tab_i, registers, &PSR, headers, tab_m->size);
 	hilighting_on(windows, tab_m, tab_i, registers, PSR, i, instruction_offset, memory_offset);
+	refresh_all(windows, tab_m, tab_i, instruction_offset, memory_offset);
 	initControlls();
-	current_window = windows[0];
+	if (tab_i->size <= REGISTER_LENGTH && tab_m->size > REGISTER_LENGTH)
+		current_window = windows[2];
+	else
+		current_window = windows[0];
 
-	while (exit == '0' && (key = getch()) != KEY_ESCAPE) {
+	while ((key = getch()) != KEY_ESCAPE) {
 		switch (key) {
 		case KEY_LEFT:
-			if (tab_i->size > REGISTER_LENGTH) {
+			if (tab_i->size > REGISTER_LENGTH && tab_m->size > REGISTER_LENGTH) {
 				current_window = windows[0];
 				highlight_header(strlen(headers[0]), strlen(headers[2]), 'i');
 			}
 			break;
 		case KEY_RIGHT:
-			if (tab_i->size > REGISTER_LENGTH) {
+			if (tab_i->size > REGISTER_LENGTH && tab_m->size > REGISTER_LENGTH) {
 				current_window = windows[2];
 				highlight_header(strlen(headers[0]), strlen(headers[2]), 'm');
 			}
 			break;
 		case KEY_UP:
-			if (tab_i->size > REGISTER_LENGTH) {
+			if (tab_i->size > REGISTER_LENGTH || tab_m->size > REGISTER_LENGTH) {
 				if (current_window == windows[0] && instruction_offset > 0)
 					prefresh(current_window, --instruction_offset, 0, WINDOW_Y, INSTRUCTION_X, WINDOW_Y + min(tab_i->size, REGISTER_LENGTH) - 1, INSTRUCTION_X + INSTRUCTION_WIDTH - 1);
 				if (current_window == windows[2] && memory_offset > 0)
@@ -74,7 +84,7 @@ void debug(memory_array *tab_m, instruction_array *tab_i, reg registers[], char 
 			}
 			break;
 		case KEY_DOWN:
-			if (tab_i->size > REGISTER_LENGTH) {
+			if (tab_i->size > REGISTER_LENGTH || tab_m->size > REGISTER_LENGTH) {
 				if (current_window == windows[0] && instruction_offset + min(tab_i->size, REGISTER_LENGTH) < tab_i->size)
 					prefresh(current_window, ++instruction_offset, 0, WINDOW_Y, INSTRUCTION_X, WINDOW_Y + min(tab_i->size, REGISTER_LENGTH) - 1, INSTRUCTION_X + INSTRUCTION_WIDTH - 1);
 				if (current_window == windows[2] && memory_offset + min(tab_m->size, REGISTER_LENGTH) < tab_m->size)
@@ -82,8 +92,8 @@ void debug(memory_array *tab_m, instruction_array *tab_i, reg registers[], char 
 			}
 			break;
 		case KEY_SPACE:
-			last = i;
-			if (i < tab_i->size)
+			if (i < tab_i->size) {
+				last = i;
 				if (!(code = step(&tab_m, &tab_i, registers, &PSR, &i))) {
 					update(windows, tab_i, tab_m, registers, PSR, last, instruction_offset, memory_offset);
 					if (i < tab_i->size) {
@@ -91,24 +101,35 @@ void debug(memory_array *tab_m, instruction_array *tab_i, reg registers[], char 
 						autoscroll_instruction(i, &instruction_offset, tab_i->size, windows[0]);
 						autoscroll_memory(i, &memory_offset, tab_m->size, tab_i, registers, windows[2]);
 					}
-					else exit = '1';
+					else show_exit_message(code);
+					refresh_all(windows, tab_m, tab_i, instruction_offset, memory_offset);
 				}
-				else exit = '1';
-			else exit = '1';
+				else show_exit_message(code);
+			}
+			else show_exit_message(code);
+			break;
+		case KEY_TAB:
+			while (i < tab_i->size) {
+				last = i;
+				if (!(code = step(&tab_m, &tab_i, registers, &PSR, &i))) {
+					update(windows, tab_i, tab_m, registers, PSR, last, instruction_offset, memory_offset);
+				}
+				else break;
+			}
+			show_exit_message(code);
+			refresh_all(windows, tab_m, tab_i, instruction_offset, memory_offset);
 			break;
 		default:
 			break;
 		}
 	}
 
-	show_exit_message(code);
-	getch();
-
 	endwin();
+	return code;
 }
 
 
-WINDOW** initWindow(memory_array *tab_m, instruction_array *tab_i, reg registers[], char(*PSR)[], const char* headers[], int memory_length) {	//initializes debug mode window
+WINDOW** initWindow(memory_array *tab_m, instruction_array *tab_i, reg registers[], char(*PSR)[], const char* headers[]) {	//initializes debug mode window
 	WINDOW** windows = (WINDOW**)malloc(5 * sizeof(WINDOW*));
 	char a[17], b[5];
 
@@ -118,9 +139,9 @@ WINDOW** initWindow(memory_array *tab_m, instruction_array *tab_i, reg registers
 	windows[3] = newwin(PSR_LENGTH, PSR_WIDTH, WINDOW_Y, PSR_X);
 	windows[4] = newwin(SIGN_LENGTH, SIGN_WIDTH, SIGN_Y, SIGN_X);
 
-	if (tab_i->size > REGISTER_LENGTH) attron(A_STANDOUT);
+	if (tab_i->size > REGISTER_LENGTH && tab_m->size > REGISTER_LENGTH) attron(A_STANDOUT);
 	mvprintw(HEADER_Y, (INSTRUCTION_WIDTH - strlen(headers[0])) / 2 + INSTRUCTION_X, headers[0]);
-	if (tab_i->size > REGISTER_LENGTH) attroff(A_STANDOUT);
+	if (tab_i->size > REGISTER_LENGTH && tab_m->size > REGISTER_LENGTH) attroff(A_STANDOUT);
 	mvprintw(HEADER_Y, (REGISTER_WIDTH - strlen(headers[1])) / 2 + REGISTER_X, headers[1]);
 	mvprintw(HEADER_Y, (MEMORY_WIDTH - strlen(headers[2])) / 2 + MEMORY_X, headers[2]);
 	mvprintw(HEADER_Y, (PSR_WIDTH - strlen(headers[3])) / 2 + PSR_X, headers[3]);
@@ -131,8 +152,6 @@ WINDOW** initWindow(memory_array *tab_m, instruction_array *tab_i, reg registers
 	box_border(min(tab_m->size, REGISTER_LENGTH), MEMORY_WIDTH, WINDOW_Y, MEMORY_X);
 	box_border(PSR_LENGTH, PSR_WIDTH, WINDOW_Y, PSR_X);
 	box_border(SIGN_LENGTH, SIGN_WIDTH, SIGN_Y, SIGN_X);
-
-	refresh();
 
 	for (int i = 0; i < tab_i->size; i++) {
 		instruction_node tmp = tab_i->tab[i];
@@ -157,8 +176,6 @@ WINDOW** initWindow(memory_array *tab_m, instruction_array *tab_i, reg registers
 		snprintf(a, 9, "%08X", registers[i].value);
 		mvwprintw(windows[1], i, 0, "%-2d: %-11s", i, add_gap(a));
 	}
-	snprintf(a, 9, "%08X", registers[14].value + (memory_length - 1) * 4);
-	mvwprintw(windows[1], 14, 0, "%-2d: %-11s", 14, add_gap(a));
 	
 
 	for (int i = 0; i < tab_m->size; i++) {
@@ -174,16 +191,10 @@ WINDOW** initWindow(memory_array *tab_m, instruction_array *tab_i, reg registers
 		}
 	}
 
-	strncpy_s(a, 17, &((*PSR)[48]), 16);
+	snprintf(a, 17, "%016X", tab_m->size * 4);
 	mvwprintw(windows[3], 0, 0, "%s", add_gap(a));
 
 	mvwprintw(windows[4], SIGN_LENGTH / 2, SIGN_WIDTH / 2, "%c", (*PSR)[4]);
-
-	prefresh(windows[0], 0, 0, WINDOW_Y, INSTRUCTION_X, WINDOW_Y + min(tab_i->size, REGISTER_LENGTH) - 1, INSTRUCTION_X + INSTRUCTION_WIDTH - 1);
-	wrefresh(windows[1]);
-	prefresh(windows[2], 0, 0, WINDOW_Y, MEMORY_X, WINDOW_Y + min(tab_m->size, REGISTER_LENGTH) - 1, MEMORY_X + MEMORY_WIDTH - 1);
-	wrefresh(windows[3]);
-	wrefresh(windows[4]);
 
 	return windows;
 }
@@ -248,12 +259,6 @@ void update(WINDOW** windows, instruction_array *tab_i, memory_array* tab_m, reg
 	mvwprintw(windows[3], 0, 0, "%s", add_gap(a));
 
 	mvwprintw(windows[4], SIGN_LENGTH / 2, SIGN_WIDTH / 2, "%c", PSR[4]);
-
-	prefresh(windows[0], instruction_offset, 0, WINDOW_Y, INSTRUCTION_X, WINDOW_Y + min(tab_i->size, REGISTER_LENGTH) - 1, INSTRUCTION_X + INSTRUCTION_WIDTH - 1);
-	wrefresh(windows[1]);
-	prefresh(windows[2], memory_offset, 0, WINDOW_Y, MEMORY_X, WINDOW_Y + min(tab_m->size, REGISTER_LENGTH) - 1, MEMORY_X + MEMORY_WIDTH - 1);
-	wrefresh(windows[3]);
-	wrefresh(windows[4]);
 }
 
 void hilighting_on(WINDOW** windows, memory_array* tab_m, instruction_array* tab_i, reg registers[], char PSR[], int line, int instruction_offset, int memory_offset) {		//hilights new instruction data
@@ -264,16 +269,11 @@ void hilighting_on(WINDOW** windows, memory_array* tab_m, instruction_array* tab
 		mvwchgat(windows[1], tab_i->tab[line].arg2, 0, REGISTER_WIDTH, A_STANDOUT, 0, NULL);
 	if (tab_i->tab[line].command[0] != 'J' && tab_i->tab[line].command[1] != 'R')
 		mvwchgat(windows[2], (registers[tab_i->tab[line].arg2].value + tab_i->tab[line].offset) / 4, 0, MEMORY_WIDTH, A_STANDOUT, 0, NULL);
-
-	prefresh(windows[0], instruction_offset, 0, WINDOW_Y, INSTRUCTION_X, WINDOW_Y + min(tab_i->size, REGISTER_LENGTH) - 1, INSTRUCTION_X + INSTRUCTION_WIDTH - 1);
-	wrefresh(windows[1]);
-	prefresh(windows[2], memory_offset, 0, WINDOW_Y, MEMORY_X, WINDOW_Y + min(tab_m->size, REGISTER_LENGTH) - 1, MEMORY_X + MEMORY_WIDTH - 1);
-	wrefresh(windows[3]);
 }
 
 void initControlls() {		//initializes window showing information about controlls in debug mode
 	WINDOW* window = newwin(CONTROLLS_LENGTH, CONTROLLS_WIDTH, CONTROLLS_Y, CONTROLLS_X);
-	const char* messages[] = { "SPACE - next instruct", "UP - scroll up", "DOWN - scroll down", "LEFT - select instruct", "RIGHT - select memory", "ESC - exit" };
+	const char* messages[] = { "SPACE - next instruct", "UP - scroll up", "DOWN - scroll down", "LEFT - select instruct", "RIGHT - select memory", "ESC - exit", "TAB - skip all"};
 	const char* header = "CONTROLLS";
 	mvprintw(CONTROLLS_HEADER_Y, (CONTROLLS_WIDTH - strlen(header)) / 2 + CONTROLLS_X, header);
 	box_border(CONTROLLS_LENGTH, CONTROLLS_WIDTH, CONTROLLS_Y, CONTROLLS_X);
@@ -299,7 +299,16 @@ void autoscroll_memory(int i, int *memory_offset, int memory_length, instruction
 
 void show_exit_message(int code) {		//prints exit message to window
 	if (code)
-		mvprintw(EXIT_MESSAGE_Y, WINDOW_X, code_to_msg(code)), " (press any key to exit)";
+		mvprintw(EXIT_MESSAGE_Y, WINDOW_X, "%s (press ESCAPE to exit)", code_to_msg(code));
 	else
-		mvprintw(EXIT_MESSAGE_Y, WINDOW_X, "PROGRAM ENDED SUCCESSFULLY (press any key to exit)");
+		mvprintw(EXIT_MESSAGE_Y, WINDOW_X, "PROGRAM ENDED SUCCESSFULLY (press ESCAPE to exit)");
+}
+
+void refresh_all(WINDOW** windows, memory_array* tab_m, instruction_array* tab_i, int instruction_offset, int memory_offset) {		//refreshes main window and all subwindows exept controlls window
+	refresh();
+	prefresh(windows[0], instruction_offset, 0, WINDOW_Y, INSTRUCTION_X, WINDOW_Y + min(tab_i->size, REGISTER_LENGTH) - 1, INSTRUCTION_X + INSTRUCTION_WIDTH - 1);
+	wrefresh(windows[1]);
+	prefresh(windows[2], memory_offset, 0, WINDOW_Y, MEMORY_X, WINDOW_Y + min(tab_m->size, REGISTER_LENGTH) - 1, MEMORY_X + MEMORY_WIDTH - 1);
+	wrefresh(windows[3]);
+	wrefresh(windows[4]);
 }

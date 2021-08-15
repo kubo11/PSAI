@@ -5,7 +5,10 @@
 
 int step(memory_array **tab_m, instruction_array **tab_i, reg (*registers)[], char (*PSR)[], int *i) {      //executes one instruction
     if ((*tab_i)->tab[(*i)].command[0] == 'J'){
-        return jump((*tab_i)->tab[(*i)].command[1], get_sign_PSR((*PSR)), (*registers)[(*tab_i)->tab[(*i)].arg2].type, (*registers)[(*tab_i)->tab[(*i)].arg2].value + (*tab_i)->tab[(*i)].offset, i, (*tab_i)->size - 1, **tab_i, PSR, (*tab_m)->size);
+        return jump((*tab_i)->tab[(*i)].command[1], get_sign_PSR((*PSR)), (*registers)[(*tab_i)->tab[(*i)].arg2].type, (*registers)[(*tab_i)->tab[(*i)].arg2].value + (*tab_i)->tab[(*i)].offset - (*tab_m)->size * 4, i, (*tab_i)->size - 1, **tab_i, PSR, (*tab_m)->size);
+    }
+    if ((*tab_i)->tab[(*i)].command[1] != 'R' && (*tab_i)->tab[(*i)].command[1] != 'A') {
+        if (((*registers)[(*tab_i)->tab[(*i)].arg2].value + (*tab_i)->tab[(*i)].offset) / 4 >= (*tab_m)->size) return 11;
     }
     if ((*tab_i)->tab[(*i)].command[0] == 'A'){
         if ((*tab_i)->tab[(*i)].command[1] == 'R'){

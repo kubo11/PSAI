@@ -15,7 +15,7 @@ int import_memory_mcsk(FILE *input, memory_array **tab);
 int import_instructions_mcsk(FILE *input, instruction_array **tab);
 fileio open_files(int argc, char **argv);
 int check_input_arguments(int argc, char** argv);
-int close_files(fileio files);
+int close_files(fileio files, char mode);
 int cleanupnexit(int code, fileio files, memory_array* tab_m, instruction_array* tab_i);
 
 #endif //PSAI_INOUT_H

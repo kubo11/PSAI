@@ -47,7 +47,7 @@ int add_instruction_node(instruction_array **tab, char *label, char *command, in
 int update_instructions(memory_array *tab_m, instruction_array **tab_i);
 void delete_data(memory_array *tab_m, instruction_array *tab_i);
 int setup_arrays(memory_array **tab_m, instruction_array **tab_i);
-int setup_registers(reg (*registers)[]);
+int setup_registers(reg (*registers)[], int memory_offset);
 int bin_search(int p, int k, instruction_node tab[], int w);
 
 #endif //PSAI_DATA_H
